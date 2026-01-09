@@ -1,4 +1,4 @@
-"""测试 GitHubTrendingScraper 模块"""
+"""Tests for GitHubTrendingScraper module"""
 
 import os
 import sys
@@ -15,44 +15,44 @@ from src.models import Repository
 
 
 class TestParseNumber:
-    """测试数字解析功能"""
+    """Test number parsing functionality"""
 
     def setup_method(self):
         self.scraper = GitHubTrendingScraper()
 
     def test_parse_simple_number(self):
-        """测试简单数字"""
+        """Test simple numbers"""
         assert self.scraper._parse_number("1234") == 1234
         assert self.scraper._parse_number("1,234") == 1234
         assert self.scraper._parse_number("12,345") == 12345
 
     def test_parse_k_suffix(self):
-        """测试 k 后缀"""
+        """Test k suffix"""
         assert self.scraper._parse_number("5k") == 5000
         assert self.scraper._parse_number("5.2k") == 5200
         assert self.scraper._parse_number("1.5k") == 1500
         assert self.scraper._parse_number("0.5k") == 500
 
     def test_parse_m_suffix(self):
-        """测试 M 后缀"""
+        """Test M suffix"""
         assert self.scraper._parse_number("1M") == 1_000_000
         assert self.scraper._parse_number("1.5M") == 1_500_000
         assert self.scraper._parse_number("0.5M") == 500_000
 
     def test_parse_b_suffix(self):
-        """测试 B 后缀"""
+        """Test B suffix"""
         assert self.scraper._parse_number("1B") == 1_000_000_000
         assert self.scraper._parse_number("2.5B") == 2_500_000_000
 
     def test_parse_with_text(self):
-        """测试带文字的数字"""
+        """Test numbers with text"""
         assert self.scraper._parse_number("1234 stars") == 1234
         assert self.scraper._parse_number("5.2k stars") == 5200
         assert self.scraper._parse_number("234 stars today") == 234
         assert self.scraper._parse_number("1.5k forks") == 1500
 
     def test_parse_empty_and_invalid(self):
-        """测试空值和无效值"""
+        """Test empty and invalid values"""
         assert self.scraper._parse_number("") == 0
         assert self.scraper._parse_number(None) == 0
         assert self.scraper._parse_number("invalid") == 0
@@ -60,13 +60,13 @@ class TestParseNumber:
 
 
 class TestParseRepoArticle:
-    """测试仓库 HTML 解析"""
+    """Test repository HTML parsing"""
 
     def setup_method(self):
         self.scraper = GitHubTrendingScraper()
 
     def test_parse_basic_repo(self):
-        """测试基本仓库解析"""
+        """Test basic repository parsing"""
         html = """
         <article class="Box-row">
             <h2>
@@ -101,7 +101,7 @@ class TestParseRepoArticle:
         assert repo.owner_avatar_url is not None
 
     def test_parse_repo_with_stars_today(self):
-        """测试包含今日星标数的解析"""
+        """Test parsing with stars today count"""
         html = """
         <article class="Box-row">
             <h2>
@@ -126,7 +126,7 @@ class TestParseRepoArticle:
         assert repo.stars_today == 123
 
     def test_parse_repo_with_k_stars(self):
-        """测试带 k 后缀的星标数"""
+        """Test stars with k suffix"""
         html = """
         <article class="Box-row">
             <h2>
@@ -151,7 +151,7 @@ class TestParseRepoArticle:
         assert repo.stars_today == 1200
 
     def test_parse_repo_without_language(self):
-        """测试没有语言的仓库"""
+        """Test repository without language"""
         html = """
         <article class="Box-row">
             <h2>
@@ -173,7 +173,7 @@ class TestParseRepoArticle:
         assert repo.language is None
 
     def test_parse_repo_without_description(self):
-        """测试没有描述的仓库"""
+        """Test repository without description"""
         html = """
         <article class="Box-row">
             <h2>
@@ -194,7 +194,7 @@ class TestParseRepoArticle:
         assert repo.description is None
 
     def test_parse_invalid_article(self):
-        """测试无效的文章元素"""
+        """Test invalid article element"""
         html = '<article class="Box-row"><p>No content</p></article>'
         soup = BeautifulSoup(html, 'html.parser')
         article = soup.select_one('article.Box-row')
@@ -205,14 +205,14 @@ class TestParseRepoArticle:
 
 
 class TestFetchWithRetry:
-    """测试重试机制"""
+    """Test retry mechanism"""
 
     def setup_method(self):
         self.scraper = GitHubTrendingScraper(max_retries=3)
 
     @patch('requests.Session.get')
     def test_successful_request(self, mock_get):
-        """测试成功请求"""
+        """Test successful request"""
         mock_response = MagicMock()
         mock_response.text = "<html><body>Test</body></html>"
         mock_response.raise_for_status = MagicMock()
@@ -226,26 +226,26 @@ class TestFetchWithRetry:
     @patch('requests.Session.get')
     @patch('src.trending_scraper.time.sleep')
     def test_retry_on_failure(self, mock_sleep, mock_get):
-        """测试失败重试"""
+        """Test retry on failure"""
         import requests
         mock_get.side_effect = requests.exceptions.RequestException("Network error")
 
         soup = self.scraper._fetch_with_retry("https://example.com")
 
         assert soup is None
-        # 应该重试 3 次
+        # Should retry 3 times
         assert mock_get.call_count == 3
 
     @patch('requests.Session.get')
     @patch('src.trending_scraper.time.sleep')
     def test_retry_then_success(self, mock_sleep, mock_get):
-        """测试重试后成功"""
+        """Test retry then success"""
         import requests
         mock_response = MagicMock()
         mock_response.text = "<html><body>Success</body></html>"
         mock_response.raise_for_status = MagicMock()
 
-        # 前两次失败，第三次成功
+        # First two fail, third succeeds
         mock_get.side_effect = [
             requests.exceptions.RequestException("Network error"),
             requests.exceptions.RequestException("Network error"),
@@ -260,7 +260,7 @@ class TestFetchWithRetry:
 
 
 class TestGetSinceParam:
-    """测试 since 参数转换"""
+    """Test since parameter conversion"""
 
     def setup_method(self):
         self.scraper = GitHubTrendingScraper()
@@ -279,7 +279,7 @@ class TestGetSinceParam:
 
 
 class TestInitialization:
-    """测试初始化"""
+    """Test initialization"""
 
     def test_default_initialization(self):
         scraper = GitHubTrendingScraper()

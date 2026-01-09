@@ -56,7 +56,7 @@ class EmailConfig(BaseModel):
 
     @model_validator(mode='after')
     def infer_from_address(self):
-        """如果 from_address 为空，从 smtp.username 推断"""
+        """Infer from_address from smtp.username if from_address is empty"""
         if not self.from_address and self.smtp.username:
             self.from_address = f"GitHub Trending <{self.smtp.username}>"
         return self

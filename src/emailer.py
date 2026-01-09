@@ -177,6 +177,13 @@ class EmailSender:
 
         return "\n".join(lines)
 
+    @staticmethod
+    def _extract_email_address(from_address: str) -> str:
+        """Extract pure email address from a formatted address like 'Name <email@domain.com>'."""
+        if "<" in from_address and ">" in from_address:
+            return from_address.split("<")[1].split(">")[0]
+        return from_address
+
     def _send_email(
         self,
         to_addr: str,
@@ -203,10 +210,7 @@ class EmailSender:
         logger.info(f"SMTP username: {smtp_config.username}")
 
         # Extract email address from from_address if it contains a name
-        from_address = self.email_config.from_address
-        if "<" in from_address and ">" in from_address:
-            from_address = from_address.split("<")[1].split(">")[0]
-
+        from_address = self._extract_email_address(self.email_config.from_address)
         logger.info(f"Using from address for MAIL FROM: {from_address}")
 
         # Use SMTP_SSL for port 465, otherwise use SMTP with optional STARTTLS

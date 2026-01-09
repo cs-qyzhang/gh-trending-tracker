@@ -64,8 +64,14 @@ dmypy.json
 # Data
 data/
 
-# env
+# Environment and Configuration
 .env
+config.yaml
+config.yaml.local
+
+# Systemd service files (users may copy and customize)
+*.service
+
 
 # Logs
 *.log

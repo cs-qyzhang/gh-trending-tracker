@@ -46,26 +46,26 @@ filter:
         assert config.filter.days_threshold == 7
 
     def test_email_from_address_inference(self):
-        """测试 from_address 从 smtp.username 自动推断"""
+        """Test automatic inference of from_address from smtp.username"""
         config = Config()
         config.email.smtp.username = "test@example.com"
 
-        # 重新创建 EmailConfig 以触发验证器
+        # Recreate EmailConfig to trigger validator
         email_config = EmailConfig(
             enabled=True,
             smtp=config.email.smtp,
-            from_address="",  # 留空
+            from_address="",  # Leave empty
             to_addresses=["recipient@example.com"]
         )
 
         assert email_config.from_address == "GitHub Trending <test@example.com>"
 
     def test_email_from_address_explicit(self):
-        """测试显式指定的 from_address 不会被覆盖"""
+        """Test that explicitly specified from_address is not overridden"""
         email_config = EmailConfig(
             enabled=True,
             smtp={"username": "test@example.com"},
-            from_address="Custom Name <custom@example.com>",  # 显式指定
+            from_address="Custom Name <custom@example.com>",  # Explicitly specified
             to_addresses=["recipient@example.com"]
         )
 
@@ -118,7 +118,7 @@ class TestGitHubFetcher:
 
     @patch('src.trending_scraper.GitHubTrendingScraper.scrape_trending')
     def test_fetch_trending_repos(self, mock_scrape):
-        """测试通过爬取页面获取 trending"""
+        """Test fetching trending repos by scraping page"""
         from datetime import datetime, timezone, timezone
 
         mock_repo = Repository(

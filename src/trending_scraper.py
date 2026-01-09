@@ -1,4 +1,4 @@
-"""爬取 GitHub Trending 页面（真正的 trending 数据）"""
+"""Scrape GitHub Trending page (real trending data)"""
 
 import logging
 import re
@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubTrendingScraper:
-    """爬取 https://github.com/trending 页面"""
+    """Scrape https://github.com/trending page"""
 
-    # 最大重试次数
+    # Maximum retry attempts
     MAX_RETRIES = 3
-    # 重试延迟（秒）
+    # Retry delay in seconds
     RETRY_DELAY = 2
-    # API 并发数
+    # API concurrent workers
     API_MAX_WORKERS = 5
 
     def __init__(self, max_retries: int = None):
@@ -42,33 +42,36 @@ class GitHubTrendingScraper:
         github_token: str = None
     ) -> List[Repository]:
         """
-        爬取 GitHub Trending 页面
+        Scrape GitHub Trending page
 
         Args:
             period: daily, weekly, monthly
-            language: 编程语言（python, javascript 等）
-            limit: 返回数量
-            enrich_with_api: 是否使用 GitHub API 获取完整信息
-            github_token: GitHub token（用于 API 请求）
+            language: Programming language (python, javascript, etc.)
+            limit: Number of results to return
+            enrich_with_api: Whether to use GitHub API to fetch complete info
+            github_token: GitHub token (for API requests)
+
+        Returns:
+            List of repositories
         """
-        # 构建URL
+        # Build URL
         url = self.base_url
         if language:
             url = f"{self.base_url}/{language}"
 
-        # 添加时间范围参数
+        # Add time range parameter
         since = self._get_since_param(period)
         if since:
             url = f"{url}?since={since}"
 
         logger.info(f"Scraping URL: {url}")
 
-        # 使用重试机制获取页面
+        # Fetch page with retry mechanism
         soup = self._fetch_with_retry(url)
         if not soup:
             return []
 
-        # 解析仓库列表
+        # Parse repository list
         repos = []
         articles = soup.select('article.Box-row')
 
@@ -79,14 +82,14 @@ class GitHubTrendingScraper:
             if repo:
                 repos.append(repo)
 
-        # 批量使用 GitHub API 获取完整信息（并发）
+        # Batch fetch complete info using GitHub API (concurrent)
         if enrich_with_api and github_token and repos:
             repos = self._enrich_repos_from_api_batch(repos, github_token)
 
         return repos
 
     def _get_since_param(self, period: str) -> str:
-        """获取 since 参数"""
+        """Get since parameter"""
         mapping = {
             "daily": "daily",
             "weekly": "weekly",
@@ -96,14 +99,14 @@ class GitHubTrendingScraper:
 
     def _fetch_with_retry(self, url: str, timeout: int = 30) -> Optional[BeautifulSoup]:
         """
-        使用重试机制获取页面
+        Fetch page with retry mechanism
 
         Args:
-            url: 请求的 URL
-            timeout: 请求超时时间
+            url: Request URL
+            timeout: Request timeout
 
         Returns:
-            BeautifulSoup 对象，失败返回 None
+            BeautifulSoup object, returns None on failure
         """
         last_error = None
 
@@ -117,7 +120,7 @@ class GitHubTrendingScraper:
                 last_error = e
                 logger.warning(f"Request failed (attempt {attempt + 1}/{self.max_retries}): {e}")
 
-                # 如果不是最后一次尝试，等待后重试
+                # If not the last attempt, wait and retry
                 if attempt < self.max_retries - 1:
                     wait_time = self.RETRY_DELAY * (attempt + 1)
                     logger.info(f"Retrying in {wait_time} seconds...")
@@ -128,14 +131,14 @@ class GitHubTrendingScraper:
 
     def _enrich_repos_from_api_batch(self, repos: List[Repository], github_token: str) -> List[Repository]:
         """
-        使用并发请求批量获取 GitHub API 数据
+        Batch fetch GitHub API data using concurrent requests
 
         Args:
-            repos: 仓库列表
+            repos: Repository list
             github_token: GitHub token
 
         Returns:
-            丰富后的仓库列表
+            Enriched repository list
         """
         def enrich_single(repo: Repository) -> Repository:
             return self._enrich_repo_from_api(repo, github_token)
@@ -143,10 +146,10 @@ class GitHubTrendingScraper:
         logger.info(f"Enriching {len(repos)} repositories with API data (concurrent)...")
 
         with ThreadPoolExecutor(max_workers=self.API_MAX_WORKERS) as executor:
-            # 提交所有任务
+            # Submit all tasks
             future_to_repo = {executor.submit(enrich_single, repo): repo for repo in repos}
 
-            # 收集结果
+            # Collect results
             enriched = []
             for future in as_completed(future_to_repo):
                 repo = future_to_repo[future]
@@ -155,12 +158,12 @@ class GitHubTrendingScraper:
                     enriched.append(enriched_repo)
                 except Exception as e:
                     logger.error(f"Error enriching {repo.full_name}: {e}")
-                    enriched.append(repo)  # 即使失败也保留原始数据
+                    enriched.append(repo)  # Keep original data even on failure
 
         return enriched
 
     def _enrich_repo_from_api(self, repo: Repository, github_token: str) -> Repository:
-        """使用 GitHub API 获取完整的仓库信息"""
+        """Fetch complete repository info using GitHub API"""
         try:
             headers = {"Authorization": f"token {github_token}"}
             api_url = f"https://api.github.com/repos/{repo.full_name}"
@@ -169,7 +172,7 @@ class GitHubTrendingScraper:
             if response.status_code == 200:
                 data = response.json()
 
-                # 解析日期
+                # Parse dates
                 created_at = None
                 if data.get("created_at"):
                     created_at = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
@@ -182,13 +185,13 @@ class GitHubTrendingScraper:
                 if data.get("pushed_at"):
                     pushed_at = datetime.fromisoformat(data["pushed_at"].replace('Z', '+00:00'))
 
-                # 更新仓库信息
+                # Update repository info
                 repo.created_at = created_at
                 repo.updated_at = updated_at
                 repo.pushed_at = pushed_at
                 repo.open_issues = data.get("open_issues_count", 0)
 
-                # 获取 owner 头像
+                # Get owner avatar
                 if data.get("owner"):
                     repo.owner_avatar_url = data["owner"].get("avatar_url")
 
@@ -204,43 +207,43 @@ class GitHubTrendingScraper:
 
     def _parse_repo_article(self, article) -> Optional[Repository]:
         """
-        解析单个仓库的 HTML
+        Parse HTML for a single repository
 
-        GitHub Trending 页面结构：
+        GitHub Trending page structure:
         - article.Box-row
-          - h2 > a (仓库名称和链接)
-          - p (描述，位于 h2 后的第一个 p)
-          - div (包含语言、stars、forks 等信息)
-            - span[itemprop="programmingLanguage"] (语言)
-            - a[href$="/stargazers"] (总星标数)
-            - a (今日新增星标数，文本类似 "234 stars today")
-            - a[href$="/network/members"] (forks 数)
-          - a > img (owner 头像)
+          - h2 > a (repo name and link)
+          - p (description, first p after h2)
+          - div (contains language, stars, forks, etc.)
+            - span[itemprop="programmingLanguage"] (language)
+            - a[href$="/stargazers"] (total star count)
+            - a (stars added today, text like "234 stars today")
+            - a[href$="/network/members"] (fork count)
+          - a > img (owner avatar)
         """
         try:
-            # 仓库名称和URL
+            # Repo name and URL
             repo_link = article.select_one('h2 a')
             if not repo_link:
                 return None
 
-            # 清理仓库名称中的所有空白字符（空格、换行、制表符等）
+            # Clean all whitespace in repo name (spaces, newlines, tabs, etc.)
             full_name = re.sub(r'\s+', '', repo_link.text)
             html_url = "https://github.com" + repo_link['href']
 
-            # 描述 - 使用更精确的选择器
-            # 描述是 h2 后的第一个 p 元素
+            # Description - use more precise selector
+            # Description is the first p element after h2
             description_elem = article.select_one('h2 + p')
             description = description_elem.text.strip() if description_elem else None
 
-            # 编程语言
+            # Programming language
             language_elem = article.select_one('span[itemprop="programmingLanguage"]')
             language = language_elem.text.strip() if language_elem else None
 
-            # 星标数（总星标，带格式化的数字，如 "1,234"）
+            # Star count (total stars, formatted number like "1,234")
             stars_elem = article.select_one('a[href$="/stargazers"]')
             stars = self._parse_number(stars_elem.text) if stars_elem else 0
 
-            # 今日新增星标数 - 包含 "stars today" 文本的链接
+            # Stars added today - link containing "stars today" text
             stars_today = 0
             for link in article.select('a'):
                 link_text = link.text.strip().lower()
@@ -252,19 +255,19 @@ class GitHubTrendingScraper:
             forks_elem = article.select_one('a[href$="/network/members"]')
             forks = self._parse_number(forks_elem.text) if forks_elem else 0
 
-            # Owner 头像 - 查找包含 img 的 a 元素，且 img 的 src 包含 avatars
+            # Owner avatar - find a element containing img, and img src includes avatars
             owner_avatar_url = None
             avatar_link = article.select_one('a img[src*="avatars"]')
             if avatar_link:
                 owner_avatar_url = avatar_link.get('src')
-                # 移除头像 URL 中的 size 参数以获取原始大小
+                # Remove size parameter from avatar URL to get original size
                 if owner_avatar_url and '&s=' in owner_avatar_url:
                     owner_avatar_url = owner_avatar_url.split('&s=')[0]
 
-            # 当前时间
+            # Current time
             now = datetime.now(timezone.utc)
 
-            # 解析 owner 和 repo name
+            # Parse owner and repo name
             parts = full_name.split('/')
             owner_login = parts[0] if len(parts) > 1 else ''
             repo_name = parts[1] if len(parts) > 1 else full_name
@@ -277,11 +280,11 @@ class GitHubTrendingScraper:
                 language=language,
                 stars=stars,
                 forks=forks,
-                watchers=0,  # Trending 页面不显示
-                open_issues=0,  # 稍后通过 API 获取
+                watchers=0,  # Not shown on Trending page
+                open_issues=0,  # Will fetch via API later
                 owner_login=owner_login,
                 owner_avatar_url=owner_avatar_url,
-                created_at=None,  # 稍后通过 API 获取
+                created_at=None,  # Will fetch via API later
                 updated_at=None,
                 pushed_at=None,
                 first_seen_at=now,
@@ -289,8 +292,8 @@ class GitHubTrendingScraper:
                 appearance_count=1
             )
 
-            # 将今日新增星标数存储在对象上（Pydantic 模型需要特殊处理）
-            # 使用 object.__setattr__ 绕过 Pydantic 的字段验证
+            # Store stars added today on the object (Pydantic model requires special handling)
+            # Use object.__setattr__ to bypass Pydantic field validation
             object.__setattr__(repo, 'stars_today', stars_today)
 
             return repo
@@ -301,9 +304,9 @@ class GitHubTrendingScraper:
 
     def _parse_number(self, text: str) -> int:
         """
-        解析带格式的数字
+        Parse formatted numbers
 
-        支持格式：
+        Supported formats:
         - "1,234" -> 1234
         - "5.2k" -> 5200
         - "1.5M" -> 1500000
@@ -312,13 +315,13 @@ class GitHubTrendingScraper:
         if not text:
             return 0
 
-        # 移除空格和单位文字
+        # Remove spaces and unit text
         cleaned = text.replace(',', '').strip()
-        # 移除 "stars", "today", "forks" 等文字
+        # Remove text like "stars", "today", "forks"
         for word in ['stars', 'today', 'forks', 'star']:
             cleaned = cleaned.lower().replace(word, '').strip()
 
-        # 处理 k/M/B 后缀
+        # Handle k/M/B suffixes
         multiplier = 1
         if 'k' in cleaned.lower():
             multiplier = 1000

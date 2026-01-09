@@ -1,6 +1,7 @@
 import logging
 import signal
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
@@ -16,9 +17,6 @@ from src.logger_config import setup_logging
 from src.models import TrendingReport
 
 logger = logging.getLogger(__name__)
-
-
-import threading
 
 class Scheduler:
     def __init__(self, config: Optional[Config] = None):
@@ -156,13 +154,8 @@ class App:
         self.scheduler = None
 
     def setup_logging(self, level: int = logging.INFO) -> None:
-        logging.basicConfig(
-            level=level,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.StreamHandler(sys.stdout)
-            ]
-        )
+        """Setup logging using the centralized logging configuration."""
+        setup_logging(log_level=level)
 
     def load_config(self, config_path: str = "config.yaml") -> Config:
         from src.config import get_config

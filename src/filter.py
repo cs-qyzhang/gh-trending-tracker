@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -204,11 +204,11 @@ class RepositoryFilter:
             logger.info(f"Cleaned up {count} old repository records")
             return count
 
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> Dict[str, int]:
         with self.get_session() as session:
             total = session.query(RepositoryRecord).count()
             new_today = session.query(RepositoryRecord).filter(
-                RepositoryRecord.first_seen_at >= datetime.now().replace(hour=0, minute=0, second=0)
+                RepositoryRecord.first_seen_at >= datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             ).count()
 
             return {
