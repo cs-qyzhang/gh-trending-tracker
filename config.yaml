@@ -1,0 +1,56 @@
+# GitHub Trending Agent Configuration
+
+# GitHub API Configuration
+github:
+  token: ${GITHUB_TOKEN}  # GitHub Personal Access Token
+  base_url: "https://api.github.com"
+  timeout: 30
+
+# Trending Fetch Settings
+trending:
+  period: daily  # daily, weekly, monthly
+  language: ""    # Empty for all languages, e.g., "python", "javascript"
+  limit: 50       # Number of repos to fetch
+
+# Filter Settings
+filter:
+  days_threshold: 3  # Filter repos that appeared in the last X days
+
+# LLM Configuration
+llm:
+  provider: "anthropic"  # openai, anthropic
+  model: "glm-4.7"
+  base_url: "https://open.bigmodel.cn/api/anthropic"
+  api_key: ${LLM_API_KEY}
+  max_tokens: 5000
+  temperature: 0.5
+  # Prompt template for summarizing repositories
+  summary_prompt: |
+    You are a tech analyst. Summarize the following GitHub repository in ONE concise sentence.
+    Focus on what it does and why it's interesting.
+
+    Repository: {repo_name}
+    Description: {description}
+    Language: {language}
+    Stars: {stars}
+
+    Summary (one sentence):
+
+# Email Configuration
+email:
+  enabled: true
+  smtp:
+    host: "smtpdm.aliyun.com"
+    port: 465
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    use_ssl: true  # Use SSL for port 465
+  to:
+    - "example@example"
+  subject: "Daily GitHub Trending - New Repositories"
+
+# Scheduler Configuration
+scheduler:
+  enabled: true
+  time: "09:00"  # Daily run time (HH:MM)
+  timezone: "Asia/Shanghai"
