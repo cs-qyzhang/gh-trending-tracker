@@ -76,90 +76,20 @@ SMTP_PASSWORD=your-app-password        # Your SMTP password
 
 ## Usage
 
-### Run Once
+### Default Mode (Run Once)
 
-Execute the pipeline once and exit:
-
-```bash
-python -m src.scheduler --run-once
-```
-
-### Run as Scheduler
-
-Run continuously with scheduled execution:
+Execute the pipeline once and exit (this is the default behavior):
 
 ```bash
 python -m src.scheduler
 ```
 
-## Systemd Service (Linux)
+### Scheduler Mode
 
-To run the application as a system service that starts automatically on boot:
-
-### 1. Install the Service
+Run continuously with scheduled execution using APScheduler:
 
 ```bash
-# Copy the service file
-sudo cp gh-trending-tracker.service.example /etc/systemd/system/gh-trending-tracker.service
-
-# Edit the service file to match your setup
-sudo nano /etc/systemd/system/gh-trending-tracker.service
-```
-
-### 2. Configure the Service
-
-Update these fields in the service file:
-
-- `User=your-username` - User to run the service as
-- `Group=your-group` - Group to run the service as
-- `WorkingDirectory=/path/to/gh-trending-tracker` - Project directory
-- `Environment="PATH=..."` - Update with your virtual environment path
-
-**Optional: Proxy Configuration**
-
-If you need to use a proxy, uncomment and modify the proxy settings:
-
-```ini
-#Environment="HTTP_PROXY=http://proxy.example.com:8080"
-#Environment="HTTPS_PROXY=http://proxy.example.com:8080"
-#Environment="NO_PROXY=localhost,127.0.0.1"
-```
-
-Common proxy formats:
-- `http://proxy.example.com:8080` - HTTP proxy
-- `http://user:pass@proxy.example.com:8080` - With authentication
-- `socks5://proxy.example.com:1080` - SOCKS5 proxy
-
-### 3. Enable and Start the Service
-
-```bash
-# Reload systemd configuration
-sudo systemctl daemon-reload
-
-# Enable the service to start on boot
-sudo systemctl enable gh-trending-tracker.service
-
-# Start the service
-sudo systemctl start gh-trending-tracker.service
-
-# Check service status
-sudo systemctl status gh-trending-tracker.service
-```
-
-### 4. Service Management Commands
-
-```bash
-# View logs
-sudo journalctl -u gh-trending-tracker.service -f
-
-# Stop the service
-sudo systemctl stop gh-trending-tracker.service
-
-# Restart the service
-sudo systemctl restart gh-trending-tracker.service
-
-# Disable auto-start on boot
-sudo systemctl disable gh-trending-tracker.service
+python -m src.scheduler --scheduler
 ```
 
 ### Send Latest Report
@@ -172,10 +102,79 @@ python -m src.scheduler --send-email
 
 ### Command Line Arguments
 
-- `--run-once`: Run the task once and exit
+- `--scheduler`: Run in scheduler mode (continuous execution with APScheduler)
 - `--send-email`: Send the latest report via email
 - `--email-file`: Path to a specific HTML report file to send (use with `--send-email`)
 - `--config`: Path to configuration file (default: `config.yaml`)
+
+## Automation with Crontab
+
+### Setting Up Cron Job
+
+To run the tracker automatically at scheduled times, use crontab:
+
+```bash
+# Edit crontab
+crontab -e
+```
+
+### Crontab Examples
+
+```bash
+# Run daily at 9:00 AM
+0 9 * * * cd /path/to/gh-trending-tracker && /path/to/venv/bin/python -m src.scheduler
+
+# Run daily at 9:00 AM with output logged
+0 9 * * * cd /path/to/gh-trending-tracker && /path/to/venv/bin/python -m src.scheduler >> logs/cron.log 2>&1
+
+# Run every 6 hours
+0 */6 * * * cd /path/to/gh-trending-tracker && /path/to/venv/bin/python -m src.scheduler
+
+# Run weekly on Monday at 9:00 AM
+0 9 * * 1 cd /path/to/gh-trending-tracker && /path/to/venv/bin/python -m src.scheduler
+```
+
+### Crontab Format
+
+```
+* * * * * command
+│ │ │ │ │
+│ │ │ │ └─── Day of week (0-7, Sunday = 0 or 7)
+│ │ │ └───── Month (1-12)
+│ │ └─────── Day of month (1-31)
+│ └───────── Hour (0-23)
+└─────────── Minute (0-59)
+```
+
+### Tips
+
+1. **Always use absolute paths** in crontab
+2. **Activate virtual environment** before running Python
+3. **Log output** for debugging: `>> logs/cron.log 2>&1`
+4. **Test manually first**: Run the command manually before adding to crontab
+5. **Check cron logs**: `grep CRON /var/log/syslog` (on Ubuntu/Debian)
+
+### Example: Complete Setup
+
+```bash
+# 1. Navigate to project directory
+cd /path/to/gh-trending-tracker
+
+# 2. Ensure virtual environment exists
+source venv/bin/activate
+
+# 3. Test run once
+python -m src.scheduler
+
+# 4. Edit crontab
+crontab -e
+
+# 5. Add this line (adjust paths as needed):
+0 9 * * * cd /path/to/gh-trending-tracker && /path/to/gh-trending-tracker/venv/bin/python -m src.scheduler >> /path/to/gh-trending-tracker/logs/cron.log 2>&1
+
+# 6. Verify crontab
+crontab -l
+```
 
 ## Project Structure
 

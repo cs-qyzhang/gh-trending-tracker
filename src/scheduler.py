@@ -47,10 +47,8 @@ class Scheduler:
             replace_existing=True
         )
 
-        logger.info(
-            f"Scheduler started. Next run at: "
-            f"{self._scheduler.get_job('github_trending_task').next_run_time}"
-        )
+        job = self._scheduler.get_job('github_trending_task')
+        logger.info(f"Scheduler started. Job scheduled: {job}")
 
         if run_immediately:
             logger.info("Running task immediately...")
@@ -276,9 +274,9 @@ def main():
 
     parser = argparse.ArgumentParser(description="GitHub Trending Agent")
     parser.add_argument(
-        "--run-once",
+        "--scheduler",
         action="store_true",
-        help="Run the task once and exit"
+        help="Run in scheduler mode (continuous execution with APScheduler)"
     )
     parser.add_argument(
         "--send-email",
@@ -316,8 +314,8 @@ def main():
                 logger.error("Failed to send email")
                 sys.exit(1)
         else:
-            # Normal run mode
-            app.run(run_once=args.run_once, config_path=args.config)
+            # Normal run mode (default: run once, use --scheduler for continuous mode)
+            app.run(run_once=not args.scheduler, config_path=args.config)
     except KeyboardInterrupt:
         logger.info("Application interrupted by user")
         sys.exit(0)

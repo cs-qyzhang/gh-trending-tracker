@@ -69,10 +69,6 @@ data/
 config.yaml
 config.yaml.local
 
-# Systemd service files (users may copy and customize)
-*.service
-
-
 # Logs
 *.log
 logs/
